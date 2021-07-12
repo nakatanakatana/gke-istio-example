@@ -1,0 +1,41 @@
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  namespace: istio-system
+  name: istio-backendconfig
+spec:
+  healthCheck:
+    type: HTTP
+    requestPath: /healthz/ready
+    port: 15021
+
+---
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  namespace: istio-system
+  name: istiocontrolplane
+spec:
+  profile: default
+  components:
+    pilot:
+      k8s:
+        resources:
+          requests:
+            memory: 3072Mi
+    ingressGateways:
+    - enabled: true
+      name: istio-public-ingressgateway
+    - enabled: true
+      k8s:
+        overlays:
+        - kind: Service
+          name: istio-private-ingressgateway
+          patches:
+          - path: spec.type
+            value: ClusterIP
+        serviceAnnotations:
+          cloud.google.com/neg: '{"ingress": true}'
+          cloud.google.com/backend-config: '{"default": "istio-backendconfig"}'
+          # cloud.google.com/backend-config: '{"ports": {"80": "istio-backendconfig"}}'
